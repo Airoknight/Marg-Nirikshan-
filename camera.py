@@ -24,7 +24,7 @@ import cv2
 # by-id paths are used instead of "0"/"2" because the kernel's video<N>
 # numbering shifts on replug and reboot; by-id names the physical device.
 # ---------------------------------------------------------------------------
-DEFAULT_SOURCE = "/dev/v4l/by-id/usb-Generic_HD_camera_20181212000000-video-index0"
+DEFAULT_SOURCE =  "/dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._Integrated_Webcam_HD-video-index0"
 
 
 def _sysfs_name(dev_path):
