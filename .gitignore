@@ -1,0 +1,17 @@
+# virtualenv -- 7.5 GB, rebuilt from the install commands in README.md
+.venv/
+__pycache__/
+*.py[cod]
+
+# model weights -- ultralytics re-downloads these automatically on first run
+*.pt
+*.onnx
+*.engine
+
+# recorded footage and run outputs
+*.mp4
+*.avi
+*.mkv
+out/
+runs/
+clip*.jpg
