@@ -39,6 +39,40 @@ use the stable by-id path instead:
 ./run.sh people_counter.py --source /dev/v4l/by-id/usb-Generic_HD_camera_20181212000000-video-index0
 ```
 
+## Web UI
+
+```bash
+./run.sh server.py                 # then open http://localhost:8000
+./run.sh server.py --host 0.0.0.0  # reachable from your phone on the LAN
+```
+
+Switch camera and detector live, toggle box/dot overlay, and tune thresholds
+while watching the count. One worker thread owns the camera and every browser
+tab reads the same annotated frames, so viewers cost nothing extra.
+
+This is also the right interface for the eventual Jetson deployment, which will
+run headless.
+
+### P2PNet setup
+
+The point-based detector needs the upstream repo (its 86 MB checkpoint is
+bundled in it, so there is nothing else to download):
+
+```bash
+git clone --depth 1 https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet.git third_party/P2PNet
+```
+
+**Read this before judging its accuracy:** the released weights are trained on
+ShanghaiTech Part A — dense outdoor crowds of hundreds. On a near-empty indoor
+scene P2PNet will overcount badly. That is domain mismatch, not a defect, and
+it means a sparse-scene A/B against YOLO is not a fair comparison. Judge it on
+genuinely crowded footage.
+
+`detectors.py` shims two names (`_new_empty_tensor`, `_output_size`) that the
+2021 repo imports from torchvision. Its version check reads `"0.26.0"` as `0.2`,
+decides you are on torchvision 0.5, and takes a legacy path that no longer
+exists. The shim avoids patching the vendored clone, which a re-clone would undo.
+
 ## Usage
 
 ```bash

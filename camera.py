@@ -38,10 +38,20 @@ def _sysfs_name(dev_path):
         return "?"
 
 
-def list_cameras(probe=True):
+def list_cameras(probe=True, assume_working=None):
     """Return [{index, path, name, stable_path, works, width, height}] for each
-    /dev/video* node. With probe=True each is opened to see if it yields a frame."""
+    /dev/video* node. With probe=True each is opened to see if it yields a frame.
+
+    `assume_working` is a source already being streamed by this process. A device
+    held open elsewhere reports isOpened=False -- identical to a dead node -- so
+    probing it would wrongly drop the camera currently in use. It is reported as
+    working without being touched.
+    """
     out = []
+    assume_real = os.path.realpath(assume_working) if isinstance(assume_working, str) \
+        and assume_working.startswith("/dev/") else None
+    if isinstance(assume_working, str) and assume_working.isdigit():
+        assume_real = os.path.realpath(f"/dev/video{assume_working}")
     # Map real device -> stable /dev/v4l/by-id symlink, which survives replug
     # and reboot, unlike the kernel's video<N> numbering.
     by_id = {}
@@ -53,6 +63,10 @@ def list_cameras(probe=True):
         entry = {"index": idx, "path": path, "name": _sysfs_name(path),
                  "stable_path": by_id.get(os.path.realpath(path)),
                  "works": False, "width": 0, "height": 0}
+        if assume_real and os.path.realpath(path) == assume_real:
+            entry["works"] = True          # in use by us; do not disturb the stream
+            out.append(entry)
+            continue
         if probe:
             cap = cv2.VideoCapture(idx, cv2.CAP_V4L2)
             if cap.isOpened():
@@ -62,6 +76,13 @@ def list_cameras(probe=True):
             cap.release()
         out.append(entry)
     return out
+
+
+def is_device_source(source):
+    """True for a live camera (index or /dev path), False for a video file."""
+    if isinstance(source, int):
+        return True
+    return isinstance(source, str) and (source.isdigit() or source.startswith("/dev/"))
 
 
 def open_capture(source, width=1280, height=720):
