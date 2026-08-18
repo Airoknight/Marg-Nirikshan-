@@ -5,12 +5,12 @@ __pycache__/
 
 # model weights -- ultralytics and CSRNet re-download these automatically on first run
 *.pt
-*.pth
+# *.pth
 *.onnx
 *.engine
 
 # cloned repos and uploads
-third_party/
+# third_party/
 uploads/
 
 # recorded footage and run outputs
