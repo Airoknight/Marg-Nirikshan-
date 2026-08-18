@@ -38,29 +38,29 @@ VIRTUAL_CAMERAS = {
         "camera_id": "cam_01",
         "location": "Bus Terminal - Gate A",
         "capacity": 120,
-        "source": str((HERE / "uploads/vidssave.com Shopping, People, Commerce, Mall, Many, Crowd, Walking Free Stock video footage YouTube 720p.mp4").resolve()),
+        "source": str((HERE / "videos/shopping_mall.mp4").resolve()),
         "label": "📷 Cam 01: Bus Terminal - Gate A (Cap: 120)"
     },
     "cam_02": {
         "camera_id": "cam_02",
         "location": "Bus Terminal - Gate B",
         "capacity": 150,
-        "source": str((HERE / "videos/vidssave.com Shopping, People, Commerce, Mall, Many, Crowd, Walking Free Stock video footage YouTube 720p.mp4").resolve()),
+        "source": str((HERE / "videos/college_cam.mp4").resolve()),
         "label": "📷 Cam 02: Bus Terminal - Gate B (Cap: 150)"
     },
     "cam_03": {
         "camera_id": "cam_03",
         "location": "Railway Station - Platform 1",
         "capacity": 800,
-        "source": str((HERE / "uploads/vidssave.com Today crowd at Dombivli railway station #rushhour #indianrailways #dombivli 720P.mp4").resolve()),
+        "source": str((HERE / "videos/dombivli_station.mp4").resolve()),
         "label": "📷 Cam 03: Platform 1 - High Density (Cap: 800)"
     },
     "cam_04": {
         "camera_id": "cam_04",
         "location": "Metro Station - Concourse",
-        "capacity": 300,
-        "source": str((HERE / "videos/vidssave.com Delhi Metro Crowd #shorts 1080P.mp4").resolve()),
-        "label": "📷 Cam 04: Metro Concourse (Cap: 300)"
+        "capacity": 500,
+        "source": str((HERE / "videos/delhi_metro.mp4").resolve()),
+        "label": "📷 Cam 04: Metro Station - Concourse (Cap: 500)"
     }
 }
 
