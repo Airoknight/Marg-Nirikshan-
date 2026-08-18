@@ -80,8 +80,11 @@ pip3 install --extra-index-url https://developer.download.nvidia.com/compute/red
 ```bash
 # Navigate to workspace
 cd ~/
-git clone <your-repo-url> marg-nirikshan
+git clone https://github.com/Airoknight/Marg-Nirikshan-.git marg-nirikshan
 cd marg-nirikshan
+
+# Clone P2PNet (contains the density estimation weights)
+git clone --depth 1 https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet.git third_party/P2PNet
 
 # Install application requirements (excluding desktop torch)
 pip3 install fastapi uvicorn opencv-python Pillow requests numpy scipy python-multipart
