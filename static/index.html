@@ -1443,6 +1443,11 @@ async function loadSources() {
         data.virtual_cameras.map(c => `<option value="${c.value}">${c.label}</option>`).join('') +
         `</optgroup>`;
     }
+    if (data.cameras && data.cameras.length > 0) {
+      html += `<optgroup label="Live Webcams">` +
+        data.cameras.map(c => `<option value="${c.value}">${c.label}</option>`).join('') +
+        `</optgroup>`;
+    }
     if (data.videos && data.videos.length > 0) {
       html += `<optgroup label="Video Files">` +
         data.videos.map(v => `<option value="${v.value}">${v.label}</option>`).join('') +
