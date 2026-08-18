@@ -16,6 +16,7 @@ import threading
 import time
 from collections import deque
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -692,8 +693,8 @@ class SequentialAuditManager:
 import datetime
 
 app = FastAPI()
-pipeline_1: Pipeline | None = None
-pipeline_2: Pipeline | None = None
+pipeline_1: Optional[Pipeline] = None
+pipeline_2: Optional[Pipeline] = None
 auditor = SequentialAuditManager()
 
 

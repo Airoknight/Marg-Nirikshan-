@@ -17,6 +17,7 @@ optional extra detail that only box-based models can provide.
 
 import os
 import sys
+from typing import Optional, Union
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -32,11 +33,11 @@ PERSON_CLASS = 0  # COCO class id
 class Result:
     """points is authoritative for counting; boxes/ids are best-effort extras."""
     points: np.ndarray = field(default_factory=lambda: np.zeros((0, 2), np.float32))
-    boxes: np.ndarray | None = None          # (N,4) xyxy, original frame coords
-    scores: np.ndarray | None = None
-    ids: np.ndarray | None = None            # tracker ids, when tracking is on
-    density_map: np.ndarray | None = None    # 2D continuous spatial density matrix D(x, y)
-    override_count: float | int | None = None # Explicit total count from spatial matrix integration
+    boxes: Optional[np.ndarray] = None          # (N,4) xyxy, original frame coords
+    scores: Optional[np.ndarray] = None
+    ids: Optional[np.ndarray] = None            # tracker ids, when tracking is on
+    density_map: Optional[np.ndarray] = None    # 2D continuous spatial density matrix D(x, y)
+    override_count: Union[float, int, None] = None # Explicit total count from spatial matrix integration
 
     @property
     def count(self):
