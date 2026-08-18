@@ -116,58 +116,72 @@ Fix it with `--imgsz`/`--conf`, not by cranking `--smooth`, which only hides it.
 - **Dense crowds** (50+, heads only) are the wrong problem for a detector
   entirely; that calls for a density-estimation model (P2PNet, DM-Count).
 
-#installation
-1. Clone the Code to your Jetson Nano
+## 🚀 Jetson Nano Installation Guide
+
+### 1. Clone the Code to your Jetson Nano
 Once you have flashed the SD card and booted your Jetson Nano, open a terminal on the Nano and run:
 
-bash
+```bash
 # Move to your home directory
 cd ~/
-# Clone the repository you just pushed
+# Clone the repository
 git clone https://github.com/Airoknight/Marg-Nirikshan-.git
 cd Marg-Nirikshan-
-2. Maximize Jetson Performance (Max-N Mode)
+```
+
+### 2. Maximize Jetson Performance (Max-N Mode)
 The original Jetson Nano needs to be put into 10W Max Performance mode and its fans/clocks spun up:
 
-bash
+```bash
 sudo nvpmodel -m 0
 sudo jetson_clocks
-3. Install System Dependencies
+```
+
+### 3. Install System Dependencies
 JetPack comes with OpenCV pre-installed, but you need some build tools:
 
-bash
+```bash
 sudo apt-get update
 sudo apt-get install -y python3-pip libopenblas-base libopenmpi-dev libjpeg-dev zlib1g-dev python3-dev
-4. Install PyTorch & Torchvision (CRITICAL STEP)
-DO NOT just run pip3 install torch. It will fail on the Jetson's ARM architecture. You must use NVIDIA's custom compiled wheels for JetPack 4.6.1 (Python 3.6):
+```
 
-Download and Install PyTorch 1.10:
+### 4. Install PyTorch & Torchvision (CRITICAL STEP)
+**DO NOT** just run `pip3 install torch`. It will fail on the Jetson's ARM architecture. You **must** use NVIDIA's custom compiled wheels for JetPack 4.6.1 (Python 3.6):
 
-bash
+**Download and Install PyTorch 1.10:**
+```bash
 wget https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl -O torch-1.10.0-cp36-cp36m-linux_aarch64.whl
 pip3 install Cython numpy
 pip3 install torch-1.10.0-cp36-cp36m-linux_aarch64.whl
-Compile Torchvision from Source: Because you are using PyTorch 1.10, you must compile Torchvision v0.11.1 to match it:
+```
 
-bash
+**Compile Torchvision from Source:** 
+Because you are using PyTorch 1.10, you must compile Torchvision v0.11.1 to match it:
+```bash
 git clone --branch v0.11.1 https://github.com/pytorch/vision torchvision
 cd torchvision
 export BUILD_VERSION=0.11.1
 sudo python3 setup.py install
 cd ..
-5. Install Remaining App Requirements
+```
+
+### 5. Install Remaining App Requirements
 Install FastAPI, Uvicorn, and other dependencies:
 
-bash
+```bash
 pip3 install fastapi uvicorn Pillow requests scipy==1.5.4
-(Note: We specify scipy==1.5.4 because newer versions dropped support for Python 3.6).
+```
+*(Note: We specify `scipy==1.5.4` because newer versions dropped support for Python 3.6).*
 
-6. Run the Application
+### 6. Run the Application
 Everything is now ready. Start the server exactly as you do on your laptop!
 
-bash
+```bash
 python3 server.py --host 0.0.0.0 --port 8000
-Note: The first time you run this, it may take 2-5 minutes to boot up because TensorRT will be optimizing and compiling the PyTorch models for the Jetson's Maxwell GPU.
+```
+> **Note:** The first time you run this, it may take 2-5 minutes to boot up because TensorRT will be optimizing and compiling the PyTorch models for the Jetson's Maxwell GPU.
 
-How to Access it from your Phone or Laptop:
+### How to Access it from your Phone or Laptop:
 To view the Dashboard or Passenger App from your phone/laptop, you don't need to connect a monitor to the Nano.
+1. Find the Nano's IP address by running `hostname -I` in its terminal (e.g., `192.168.1.50`).
+2. Open your phone or laptop browser and go to: `http://<YOUR_NANO_IP>:8000`
