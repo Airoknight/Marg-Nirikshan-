@@ -185,3 +185,16 @@ python3 server.py --host 0.0.0.0 --port 8000
 To view the Dashboard or Passenger App from your phone/laptop, you don't need to connect a monitor to the Nano.
 1. Find the Nano's IP address by running `hostname -I` in its terminal (e.g., `192.168.1.50`).
 2. Open your phone or laptop browser and go to: `http://<YOUR_NANO_IP>:8000`
+
+---
+
+## ⚠️ Important Note on Git Tracking (`.gitignore`)
+
+You may notice that certain folders (like `third_party/`, `.venv/`, `uploads/`, and large `.mp4` videos) are ignored by Git. **Do not remove `.gitignore` to force push everything.** 
+
+Doing so will break your repository for three reasons:
+1. **GitHub File Size Limits:** GitHub permanently blocks files over 100MB (like raw CCTV videos).
+2. **Architecture Mismatch:** Pushing a massive 7.5GB `.venv` from a laptop to GitHub is not only too large, but the Linux x86 binaries inside won't even run on the Jetson Nano's ARM64 architecture.
+3. **Nested Repositories:** P2PNet (`third_party/P2PNet`) is a cloned git repo. Pushing a repo inside a repo creates a submodule pointer instead of pushing the actual files, breaking the deployment. 
+
+Always follow the installation steps to download models directly on the target hardware!
