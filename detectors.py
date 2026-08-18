@@ -147,7 +147,12 @@ class P2PNetDetector(Detector):
 
         # Trusted checkpoint from the cloned official repo; it stores more than
         # plain tensors, so the torch>=2.6 weights_only default has to be relaxed.
-        ckpt = torch.load(weights, map_location="cpu", weights_only=False)
+        try:
+            ckpt = torch.load(weights, map_location="cpu", weights_only=False)
+        except TypeError:
+            # PyTorch 1.10 (JetPack 4.6.1) doesn't have the weights_only argument
+            ckpt = torch.load(weights, map_location="cpu")
+        
         self.model.load_state_dict(ckpt["model"])
         self.model.to(self.device).eval()
 
