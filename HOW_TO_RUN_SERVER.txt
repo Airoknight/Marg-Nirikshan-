@@ -1,0 +1,130 @@
+========================================================================
+MARG NIRIKSHAN - HOW TO RUN THE SERVER
+========================================================================
+
+0. THE COMMAND
+------------------------------------------------------------------------
+   ./run.sh server.py
+
+   Then open:  http://localhost:8000
+   Stop it with Ctrl+C.
+
+   NOTE: it is  server.py  with a DOT, not  server/py  with a slash.
+   A slash makes Python look for a folder named "server", and you get:
+       can't open file '.../server/py': [Errno 2] No such file or directory
+
+
+1. WHY ./run.sh AND NOT python
+------------------------------------------------------------------------
+Always launch through ./run.sh - never `python server.py` directly.
+
+This machine has ROS 2 Humble sourced, which puts /opt/ros/humble/... into
+PYTHONPATH. PYTHONPATH sits AHEAD of the virtualenv's site-packages in
+sys.path, and a venv does not filter it, so any package name present in both
+resolves to the ROS copy instead of ours - which breaks torch/OpenCV in
+confusing ways.
+
+run.sh strips PYTHONPATH for that one process only. Your shell keeps ROS
+exactly as it was, so your CogniPilot workspace still works in the same
+terminal.
+
+
+2. COMMANDS
+------------------------------------------------------------------------
+
+A. Standard local run (http://localhost:8000):
+   ./run.sh server.py
+
+B. LAN run - reachable from your phone on the same WiFi:
+   ./run.sh server.py --host 0.0.0.0
+
+C. Different port (if 8000 is busy):
+   ./run.sh server.py --port 8080
+
+D. Pre-load specific video files into the two viewports:
+   ./run.sh server.py --source1 "uploads/my_clip.mp4" --source2 "uploads/other.mp4"
+
+E. Use a live webcam in viewport 1:
+   ./run.sh server.py --source1 0
+
+F. Start with a specific detector:
+   ./run.sh server.py --detector yolo      # YOLO11 boxes + ByteTrack
+   ./run.sh server.py --detector p2pnet    # P2PNet head points  (default)
+   ./run.sh server.py --detector density   # KDE density heatmap
+
+You can also switch camera, video and detector live in the web UI, so the
+flags above are only for choosing what it starts with.
+
+
+3. COMMAND LINE OPTIONS (verified against server.py)
+------------------------------------------------------------------------
+Option        Default                    Description
+------------------------------------------------------------------------
+--host        127.0.0.1                  Use 0.0.0.0 for LAN access
+--port        8000                       Port number
+--source1     cam_01 preset video        Viewport 1: camera index or video path
+--source2     cam_03 preset video        Viewport 2: camera index or video path
+--detector    p2pnet                     One of: yolo, p2pnet, density
+
+There is NO plain --source option. Typing --source alone fails with
+"ambiguous option: --source could match --source1, --source2".
+
+There is NO csrnet detector. Only yolo, p2pnet and density are implemented
+in detectors.py; --detector csrnet exits with "invalid choice".
+
+
+4. ACCESSING THE DASHBOARD
+------------------------------------------------------------------------
+On this laptop:      http://localhost:8000
+From phone/tablet:   http://<LAPTOP_IP>:8000   (server must be started
+                                                with --host 0.0.0.0)
+
+Find the laptop IP with:
+   ip -4 addr show scope global | grep -oP 'inet \K[\d.]+'
+
+The IP changes when you reconnect to WiFi, so re-check it if the phone
+cannot connect.
+
+
+5. FEATURES IN THE WEB UI
+------------------------------------------------------------------------
+- Dual viewports (stream1 / stream2) for two camera feeds side by side
+- Detector selector: YOLO boxes, P2PNet points, KDE density heatmap
+- Camera / source dropdown, including any uploaded videos
+- Video upload for MP4/AVI/MKV clips; they loop automatically
+- Live metrics: people count, FPS, inference latency in ms
+
+
+6. TROUBLESHOOTING
+------------------------------------------------------------------------
+"can't open file '.../server/py'"
+   Typo. Use server.py (dot), not server/py (slash).
+
+"Address already in use"
+   An older server is still running. Find and stop it:
+       pgrep -af "[s]erver\.py"
+       pkill -f "[s]erver\.py"
+   Or just use another port: ./run.sh server.py --port 8080
+
+"could not open source ..." / black viewport
+   The camera is held by another process (an earlier server, Zoom, Cheese),
+   or the device was unplugged. Check what exists:
+       ./run.sh list_cameras.py
+
+"ModuleNotFoundError: No module named 'torch'"
+   The venv is missing or incomplete. Rebuild it:
+       env -u PYTHONPATH ./.venv/bin/pip install torch torchvision \
+           --index-url https://download.pytorch.org/whl/cu128
+       env -u PYTHONPATH ./.venv/bin/pip install ultralytics opencv-python \
+           supervision fastapi "uvicorn[standard]" python-multipart
+
+P2PNet errors about missing weights
+   The vendored repo is gitignored and must be cloned once:
+       git clone --depth 1 \
+         https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet.git \
+         third_party/P2PNet
+
+Startup takes ~30 seconds
+   Normal. Both pipelines load a model and open their video sources before
+   the first frame is served.
+========================================================================

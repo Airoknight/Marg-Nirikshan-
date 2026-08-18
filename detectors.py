@@ -54,6 +54,14 @@ class Detector:
         raise NotImplementedError
 
 
+import gc
+
+def clear_gpu_memory():
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 class YoloDetector(Detector):
     name = "yolo"
     supports_boxes = True
@@ -69,6 +77,7 @@ class YoloDetector(Detector):
         # which makes a crowd count plateau instead of erroring.
         self.max_det = max_det
 
+    @torch.inference_mode()
     def infer(self, frame_bgr) -> Result:
         kw = dict(imgsz=self.imgsz, conf=self.conf, iou=self.iou,
                   classes=[PERSON_CLASS], device=self.device, half=True,
@@ -94,7 +103,7 @@ class P2PNetDetector(Detector):
     supports_boxes = False
     supports_heatmap = True
 
-    def __init__(self, weights=None, threshold=0.5, max_side=1024, device="cuda"):
+    def __init__(self, weights=None, threshold=0.5, max_side=512, device="cuda"):
         self.threshold = threshold
         self.max_side = max_side
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
@@ -146,27 +155,38 @@ class P2PNetDetector(Detector):
 
     def _preprocess(self, frame_bgr):
         h, w = frame_bgr.shape[:2]
-        scale = min(1.0, self.max_side / max(h, w))
-        # The network downsamples by 128, so both sides must be multiples of it.
-        nw = max(128, int(w * scale) // 128 * 128)
-        nh = max(128, int(h * scale) // 128 * 128)
+        # Target dimension scaling while maintaining exact aspect ratio
+        raw_scale = min(1.0, self.max_side / max(h, w))
+        nw = int(round(w * raw_scale))
+        nh = int(round(h * raw_scale))
+
+        # Pad to nearest multiple of 128 to satisfy P2PNet feature stride
+        pad_w = (128 - (nw % 128)) % 128
+        pad_h = (128 - (nh % 128)) % 128
+
         resized = cv2.resize(frame_bgr, (nw, nh), interpolation=cv2.INTER_LINEAR)
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        if pad_w > 0 or pad_h > 0:
+            padded = cv2.copyMakeBorder(resized, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        else:
+            padded = resized
+
+        rgb = cv2.cvtColor(padded, cv2.COLOR_BGR2RGB)
         t = torch.from_numpy(rgb).to(self.device).permute(2, 0, 1).float().div_(255)
         t = (t.unsqueeze(0) - self.mean) / self.std
-        return t, w / nw, h / nh  # scale factors back to original frame coords
+        return t, raw_scale
 
     @torch.no_grad()
     def infer(self, frame_bgr) -> Result:
-        t, sx, sy = self._preprocess(frame_bgr)
+        t, scale = self._preprocess(frame_bgr)
         out = self.model(t)
         scores = torch.softmax(out["pred_logits"], -1)[0, :, 1]
         keep = scores > self.threshold
         if keep.sum() == 0:
             return Result()
         pts = out["pred_points"][0][keep].cpu().numpy()
-        pts[:, 0] *= sx
-        pts[:, 1] *= sy
+        # Scale predicted points back to original image space without aspect distortion
+        pts[:, 0] /= scale
+        pts[:, 1] /= scale
         return Result(points=pts, scores=scores[keep].cpu().numpy())
 
 
@@ -218,97 +238,6 @@ class DensityDetector(Detector):
         return Result(points=res.points, scores=res.scores, density_map=density_map, override_count=len(res.points))
 
 
-class CSRNetModel(torch.nn.Module):
-    """CSRNet: Dilated Convolutional Neural Network for Crowd Counting."""
-    def __init__(self):
-        super(CSRNetModel, self).__init__()
-        self.frontend_feat = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512]
-        self.backend_feat = [512, 512, 512, 256, 128, 64]
-        self.frontend = self._make_layers(self.frontend_feat)
-        self.backend = self._make_layers(self.backend_feat, in_channels=512, dilation=True)
-        self.output_layer = torch.nn.Conv2d(64, 1, kernel_size=1)
-
-    def _make_layers(self, cfg, in_channels=3, dilation=False):
-        layers = []
-        for v in cfg:
-            if v == 'M':
-                layers += [torch.nn.MaxPool2d(kernel_size=2, stride=2)]
-            else:
-                d_rate = 2 if dilation else 1
-                conv2d = torch.nn.Conv2d(in_channels, v, kernel_size=3, padding=d_rate, dilation=d_rate)
-                layers += [conv2d, torch.nn.ReLU(inplace=True)]
-                in_channels = v
-        return torch.nn.Sequential(*layers)
-
-    def forward(self, x):
-        x = self.frontend(x)
-        x = self.backend(x)
-        x = self.output_layer(x)
-        return x
-
-
-CSRNET_DIR = Path(__file__).parent / "third_party" / "CSRNet"
-
-
-class CsrNetDetector(Detector):
-    name = "csrnet"
-    supports_boxes = False
-    supports_heatmap = True
-
-    def __init__(self, weights=None, device="cuda"):
-        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-        self.model = CSRNetModel()
-        
-        weights_path = Path(weights or CSRNET_DIR / "weights" / "csrnet.pth")
-        if weights_path.exists():
-            ckpt = torch.load(weights_path, map_location="cpu", weights_only=False)
-            if isinstance(ckpt, dict) and "state_dict" in ckpt:
-                self.model.load_state_dict(ckpt["state_dict"], strict=False)
-            elif isinstance(ckpt, dict):
-                self.model.load_state_dict(ckpt, strict=False)
-            else:
-                self.model = ckpt
-        else:
-            try:
-                from torchvision.models import vgg16, VGG16_Weights
-                vgg = vgg16(weights=VGG16_Weights.DEFAULT)
-                self.model.frontend.load_state_dict(vgg.features[:23].state_dict(), strict=False)
-            except Exception:
-                pass
-
-        self.model.to(self.device).eval()
-        self.mean = torch.tensor([0.485, 0.456, 0.406], device=self.device).view(1, 3, 1, 1)
-        self.std = torch.tensor([0.229, 0.224, 0.225], device=self.device).view(1, 3, 1, 1)
-
-    @torch.no_grad()
-    def infer(self, frame_bgr) -> Result:
-        h, w = frame_bgr.shape[:2]
-        scale = min(1.0, 1024.0 / max(h, w))
-        nw, nh = int(w * scale), int(h * scale)
-        resized = cv2.resize(frame_bgr, (nw, nh)) if scale < 1.0 else frame_bgr
-        
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-        t = torch.from_numpy(rgb).to(self.device).permute(2, 0, 1).float().div_(255.0)
-        t = (t.unsqueeze(0) - self.mean) / self.std
-
-        out_map = self.model(t)
-        d_map_np = out_map[0, 0].cpu().numpy()
-        d_map_np = np.maximum(0, d_map_np)
-        
-        count = float(np.sum(d_map_np))
-        
-        density_map = cv2.resize(d_map_np, (w, h), interpolation=cv2.INTER_CUBIC)
-        density_map = np.maximum(0, density_map)
-        
-        peaks = cv2.dilate(density_map, np.ones((9, 9), np.uint8))
-        thresh = max(0.005, density_map.max() * 0.2)
-        mask = (density_map == peaks) & (density_map > thresh)
-        y_pts, x_pts = np.where(mask)
-        pts = np.stack([x_pts, y_pts], axis=1).astype(np.float32) if len(y_pts) > 0 else np.zeros((0, 2), np.float32)
-
-        return Result(points=pts, density_map=density_map, override_count=count)
-
-
 def build_detector(kind, **kw):
     if kind == "yolo":
         return YoloDetector(**kw)
@@ -316,6 +245,4 @@ def build_detector(kind, **kw):
         return P2PNetDetector(**kw)
     if kind == "density":
         return DensityDetector(**kw)
-    if kind == "csrnet":
-        return CsrNetDetector(**kw)
     raise ValueError(f"unknown detector {kind!r}")
