@@ -169,7 +169,7 @@ cd ..
 Install FastAPI, Uvicorn, and other dependencies:
 
 ```bash
-pip3 install fastapi uvicorn Pillow requests scipy==1.5.4
+pip3 install fastapi uvicorn Pillow requests python-multipart scipy==1.5.4
 ```
 *(Note: We specify `scipy==1.5.4` because newer versions dropped support for Python 3.6).*
 

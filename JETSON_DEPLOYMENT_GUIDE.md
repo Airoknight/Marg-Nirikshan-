@@ -84,7 +84,7 @@ git clone <your-repo-url> marg-nirikshan
 cd marg-nirikshan
 
 # Install application requirements (excluding desktop torch)
-pip3 install fastapi uvicorn opencv-python Pillow requests numpy scipy
+pip3 install fastapi uvicorn opencv-python Pillow requests numpy scipy python-multipart
 ```
 
 ---
